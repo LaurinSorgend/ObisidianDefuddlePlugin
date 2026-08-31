@@ -22,7 +22,7 @@ export class UrlInputModal extends Modal {
 	async onOpen(): Promise<void> {
 		const { contentEl } = this;
 		contentEl.empty();
-		contentEl.createEl('h2', { text: 'Parse URL with Defuddle' });
+		contentEl.createEl('h2', { text: 'Parse URL with defuddle' });
 
 		try {
 			const clipboard = await navigator.clipboard.readText();
@@ -37,7 +37,7 @@ export class UrlInputModal extends Modal {
 
 		new Setting(contentEl).setName('URL').addText((text) => {
 			inputEl = text.inputEl;
-			text.setPlaceholder('https://example.com/article').setValue(this.value);
+			text.setPlaceholder('HTTPS://example.com/article').setValue(this.value);
 			text.onChange((value) => {
 				this.value = value;
 			});
@@ -60,7 +60,6 @@ export class UrlInputModal extends Modal {
 			text: '',
 			cls: 'defuddle-url-modal-error',
 		});
-		this.errorEl.style.color = 'var(--text-error)';
 
 		window.setTimeout(() => inputEl?.focus(), 0);
 	}
@@ -68,7 +67,7 @@ export class UrlInputModal extends Modal {
 	private submit(): void {
 		const trimmed = this.value.trim();
 		if (!looksLikeUrl(trimmed)) {
-			this.errorEl.setText('Enter a valid http(s) URL.');
+			this.errorEl.setText('Enter a valid HTTP(s) URL.');
 			return;
 		}
 		this.close();

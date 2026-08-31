@@ -28,7 +28,7 @@ export class DefuddleSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('Save parsed content to')
-			.setDesc('Where parsed articles are saved after running "Defuddle: Parse URL".')
+			.setDesc('Where parsed articles are saved after running "defuddle: Parse URL".')
 			.addDropdown((dropdown) =>
 				dropdown
 					.addOption('note', 'New note')
@@ -43,7 +43,7 @@ export class DefuddleSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('New note folder')
-			.setDesc('Folder for new notes created from parsed URLs. Leave empty for the vault root.')
+			.setDesc('Folder for new notes created from parsed urls. Leave empty for the vault root.')
 			.addText((text) =>
 				text
 					.setPlaceholder('Clippings')

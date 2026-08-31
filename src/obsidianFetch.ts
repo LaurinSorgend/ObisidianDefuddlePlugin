@@ -6,7 +6,7 @@ import { requestUrl, RequestUrlParam } from 'obsidian';
  * extractors (reddit.ts, youtube.ts) actually use: ok, status, url, text(),
  * json(), and an optional body for `.body?.cancel()`.
  */
-export function createObsidianFetch(): typeof globalThis.fetch {
+export function createObsidianFetch(): typeof window.fetch {
 	const obsidianFetch = async (
 		input: RequestInfo | URL,
 		init?: RequestInit,
@@ -44,11 +44,11 @@ export function createObsidianFetch(): typeof globalThis.fetch {
 			url,
 			redirected: false,
 			type: 'basic',
-			headers: new Headers(res.headers as Record<string, string>),
+			headers: new Headers(res.headers),
 			body: null,
 			bodyUsed: false,
 			text: async () => res.text,
-			json: async () => res.json,
+			json: async (): Promise<unknown> => res.json as unknown,
 			arrayBuffer: async () => res.arrayBuffer,
 			blob: async () => new Blob([res.arrayBuffer]),
 			clone(): Response {
@@ -57,5 +57,5 @@ export function createObsidianFetch(): typeof globalThis.fetch {
 		} as unknown as Response;
 	};
 
-	return obsidianFetch as typeof globalThis.fetch;
+	return obsidianFetch;
 }

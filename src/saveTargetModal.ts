@@ -26,7 +26,7 @@ export class SaveTargetModal extends Modal {
 					.onClick(() => this.choose('note')),
 			)
 			.addButton((button) =>
-				button.setButtonText('Insert at cursor').onClick(() => this.choose('cursor')),
+				button.setButtonText('Insert at Cursor').onClick(() => this.choose('cursor')),
 			);
 	}
 

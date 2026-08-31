@@ -24,7 +24,7 @@ export default class DefuddlePlugin extends Plugin {
 			id: 'parse-url',
 			name: 'Parse URL',
 			callback: () => {
-				new UrlInputModal(this.app, (url) => this.parseUrl(url)).open();
+				new UrlInputModal(this.app, (url) => void this.parseUrl(url)).open();
 			},
 		});
 
@@ -109,7 +109,7 @@ export default class DefuddlePlugin extends Plugin {
 	private insertAtCursor(content: string): void {
 		const view = this.app.workspace.getActiveViewOfType(MarkdownView);
 		if (!view) {
-			new Notice('Defuddle: open a note first to insert content at the cursor.');
+			new Notice('Defuddle: open a note first to insert content at the Cursor.');
 			return;
 		}
 		const editor: Editor = view.editor;
