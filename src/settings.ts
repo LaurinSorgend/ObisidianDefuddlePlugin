@@ -1,18 +1,22 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
-import MyPlugin from './main';
+import DefuddlePlugin from './main';
 
-export interface MyPluginSettings {
-	mySetting: string;
+export type SaveMode = 'note' | 'cursor' | 'ask';
+
+export interface DefuddlePluginSettings {
+	saveMode: SaveMode;
+	noteFolder: string;
 }
 
-export const DEFAULT_SETTINGS: MyPluginSettings = {
-	mySetting: 'default',
+export const DEFAULT_SETTINGS: DefuddlePluginSettings = {
+	saveMode: 'note',
+	noteFolder: '',
 };
 
-export class SampleSettingTab extends PluginSettingTab {
-	plugin: MyPlugin;
+export class DefuddleSettingTab extends PluginSettingTab {
+	plugin: DefuddlePlugin;
 
-	constructor(app: App, plugin: MyPlugin) {
+	constructor(app: App, plugin: DefuddlePlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
 	}
@@ -23,14 +27,29 @@ export class SampleSettingTab extends PluginSettingTab {
 		containerEl.empty();
 
 		new Setting(containerEl)
-			.setName('Settings #1')
-			.setDesc("It's a secret")
+			.setName('Save parsed content to')
+			.setDesc('Where parsed articles are saved after running "Defuddle: Parse URL".')
+			.addDropdown((dropdown) =>
+				dropdown
+					.addOption('note', 'New note')
+					.addOption('cursor', 'Cursor position in active note')
+					.addOption('ask', 'Ask each time')
+					.setValue(this.plugin.settings.saveMode)
+					.onChange(async (value) => {
+						this.plugin.settings.saveMode = value as SaveMode;
+						await this.plugin.saveSettings();
+					}),
+			);
+
+		new Setting(containerEl)
+			.setName('New note folder')
+			.setDesc('Folder for new notes created from parsed URLs. Leave empty for the vault root.')
 			.addText((text) =>
 				text
-					.setPlaceholder('Enter your secret')
-					.setValue(this.plugin.settings.mySetting)
+					.setPlaceholder('Clippings')
+					.setValue(this.plugin.settings.noteFolder)
 					.onChange(async (value) => {
-						this.plugin.settings.mySetting = value;
+						this.plugin.settings.noteFolder = value.trim();
 						await this.plugin.saveSettings();
 					}),
 			);

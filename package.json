@@ -1,7 +1,7 @@
 {
-	"name": "obsidian-sample-plugin",
-	"version": "1.0.0",
-	"description": "This is a sample plugin for Obsidian (https://obsidian.md)",
+	"name": "obsidian-defuddle-plugin",
+	"version": "0.1.0",
+	"description": "Parse a URL with Defuddle and save the extracted article as a note.",
 	"main": "main.js",
 	"type": "module",
 	"scripts": {
@@ -12,6 +12,9 @@
 	},
 	"keywords": [],
 	"license": "0-BSD",
+	"dependencies": {
+		"defuddle": "^0.19.3"
+	},
 	"devDependencies": {
 		"@eslint/js": "^9.39.4",
 		"@types/node": "^22.15.17",

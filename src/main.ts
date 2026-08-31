@@ -1,89 +1,34 @@
 import {
 	Editor,
 	MarkdownView,
-	MarkdownFileInfo,
-	Modal,
 	Notice,
 	Plugin,
+	requestUrl,
+	stringifyYaml,
 } from 'obsidian';
-import {
-	DEFAULT_SETTINGS,
-	MyPluginSettings,
-	SampleSettingTab,
-} from './settings';
+import Defuddle from 'defuddle/full';
+import type { DefuddleResponse } from 'defuddle/full';
+import { DEFAULT_SETTINGS, DefuddlePluginSettings, DefuddleSettingTab } from './settings';
+import { UrlInputModal } from './urlModal';
+import { SaveTargetModal, SaveTarget } from './saveTargetModal';
+import { createObsidianFetch } from './obsidianFetch';
+import { ensureFolder, sanitizeFilename, uniqueNotePath } from './noteUtils';
 
-// Remember to rename these classes and interfaces!
-
-export default class MyPlugin extends Plugin {
-	settings!: MyPluginSettings;
+export default class DefuddlePlugin extends Plugin {
+	settings!: DefuddlePluginSettings;
 
 	async onload() {
 		await this.loadSettings();
 
-		// This creates an icon in the left ribbon.
-		this.addRibbonIcon('dice', 'Sample', (_evt: MouseEvent) => {
-			// Called when the user clicks the icon.
-			new Notice('This is a notice!');
-		});
-
-		// This adds a status bar item to the bottom of the app. Does not work on mobile apps.
-		const statusBarItemEl = this.addStatusBarItem();
-		statusBarItemEl.setText('Status bar text');
-
-		// This adds a simple command that can be triggered anywhere
 		this.addCommand({
-			id: 'open-modal-simple',
-			name: 'Open modal (simple)',
+			id: 'parse-url',
+			name: 'Parse URL',
 			callback: () => {
-				new SampleModal(this.app).open();
-			},
-		});
-		// This adds an editor command that can perform some operation on the current editor instance
-		this.addCommand({
-			id: 'replace-selected',
-			name: 'Replace selected content',
-			editorCallback: (
-				editor: Editor,
-				_ctx: MarkdownView | MarkdownFileInfo,
-			) => {
-				editor.replaceSelection('Sample editor command');
-			},
-		});
-		// This adds a complex command that can check whether the current state of the app allows execution of the command
-		this.addCommand({
-			id: 'open-modal-complex',
-			name: 'Open modal (complex)',
-			checkCallback: (checking: boolean) => {
-				// Conditions to check
-				const markdownView =
-					this.app.workspace.getActiveViewOfType(MarkdownView);
-				if (markdownView) {
-					// If checking is true, we're simply "checking" if the command can be run.
-					// If checking is false, then we want to actually perform the operation.
-					if (!checking) {
-						new SampleModal(this.app).open();
-					}
-
-					// This command will only show up in Command Palette when the check function returns true
-					return true;
-				}
-				return false;
+				new UrlInputModal(this.app, (url) => this.parseUrl(url)).open();
 			},
 		});
 
-		// This adds a settings tab so the user can configure various aspects of the plugin
-		this.addSettingTab(new SampleSettingTab(this.app, this));
-
-		// If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
-		// Using this function will automatically remove the event listener when this plugin is disabled.
-		this.registerDomEvent(activeDocument, 'click', (_evt: MouseEvent) => {
-			new Notice('Click');
-		});
-
-		// When registering intervals, this function will automatically clear the interval when the plugin is disabled.
-		this.registerInterval(
-			window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000),
-		);
+		this.addSettingTab(new DefuddleSettingTab(this.app, this));
 	}
 
 	onunload() {}
@@ -92,23 +37,105 @@ export default class MyPlugin extends Plugin {
 		this.settings = Object.assign(
 			{},
 			DEFAULT_SETTINGS,
-			(await this.loadData()) as Partial<MyPluginSettings>,
+			(await this.loadData()) as Partial<DefuddlePluginSettings>,
 		);
 	}
 
 	async saveSettings() {
 		await this.saveData(this.settings);
 	}
-}
 
-class SampleModal extends Modal {
-	onOpen() {
-		const { contentEl } = this;
-		contentEl.setText('Woah!');
+	private async parseUrl(url: string): Promise<void> {
+		const notice = new Notice('Fetching page…', 0);
+
+		let html: string;
+		try {
+			const response = await requestUrl({ url, throw: false });
+			if (response.status < 200 || response.status >= 300) {
+				notice.hide();
+				new Notice(`Defuddle: failed to fetch page (HTTP ${response.status}).`);
+				return;
+			}
+			html = response.text;
+		} catch (error) {
+			notice.hide();
+			new Notice(`Defuddle: failed to fetch page (${(error as Error).message}).`);
+			return;
+		}
+
+		let result: DefuddleResponse;
+		try {
+			notice.setMessage('Parsing content…');
+			const doc = new DOMParser().parseFromString(html, 'text/html');
+			result = await new Defuddle(doc, {
+				url,
+				markdown: true,
+				fetch: createObsidianFetch(),
+			}).parseAsync();
+		} catch (error) {
+			notice.hide();
+			new Notice(`Defuddle: failed to parse page (${(error as Error).message}).`);
+			return;
+		} finally {
+			notice.hide();
+		}
+
+		if (!result.content || !result.content.trim()) {
+			new Notice('Defuddle: no article content found on that page.');
+			return;
+		}
+
+		const target = await this.resolveSaveTarget(result.title || url);
+		if (!target) {
+			return;
+		}
+
+		if (target === 'cursor') {
+			this.insertAtCursor(result.content);
+		} else {
+			await this.createNote(url, result);
+		}
 	}
 
-	onClose() {
-		const { contentEl } = this;
-		contentEl.empty();
+	private resolveSaveTarget(title: string): Promise<SaveTarget | null> {
+		if (this.settings.saveMode !== 'ask') {
+			return Promise.resolve(this.settings.saveMode);
+		}
+		return new Promise((resolve) => {
+			new SaveTargetModal(this.app, title, (target) => resolve(target)).open();
+		});
+	}
+
+	private insertAtCursor(content: string): void {
+		const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+		if (!view) {
+			new Notice('Defuddle: open a note first to insert content at the cursor.');
+			return;
+		}
+		const editor: Editor = view.editor;
+		editor.replaceSelection(content);
+		new Notice('Defuddle: content inserted.');
+	}
+
+	private async createNote(url: string, result: DefuddleResponse): Promise<void> {
+		const frontmatterFields: Record<string, string> = {
+			title: result.title || url,
+			source: url,
+		};
+		if (result.author) frontmatterFields.author = result.author;
+		if (result.published) frontmatterFields.published = result.published;
+		if (result.description) frontmatterFields.description = result.description;
+
+		const frontmatter = stringifyYaml(frontmatterFields);
+		const noteContent = `---\n${frontmatter}---\n\n${result.content}\n`;
+
+		const folder = this.settings.noteFolder;
+		await ensureFolder(this.app.vault, folder);
+		const baseName = sanitizeFilename(result.title || url);
+		const path = await uniqueNotePath(this.app.vault, folder, baseName);
+
+		const file = await this.app.vault.create(path, noteContent);
+		await this.app.workspace.getLeaf(true).openFile(file);
+		new Notice(`Defuddle: created "${file.basename}".`);
 	}
 }
