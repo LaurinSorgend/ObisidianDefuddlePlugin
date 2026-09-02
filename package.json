@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-defuddle-plugin",
-	"version": "1.0.1",
+	"version": "1.0.2",
 	"description": "Parse a URL with Defuddle and save the extracted article as a note.",
 	"main": "main.js",
 	"type": "module",
