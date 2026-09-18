@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-defuddle-plugin",
-	"version": "1.0.2",
+	"version": "0.19.4",
 	"description": "Parse a URL with Defuddle and save the extracted article as a note.",
 	"main": "main.js",
 	"type": "module",
@@ -14,7 +14,7 @@
 	"author": "Laurin Sorgend",
 	"license": "0BSD",
 	"dependencies": {
-		"defuddle": "^0.19.3"
+		"defuddle": "^0.19.4"
 	},
 	"devDependencies": {
 		"@eslint/js": "^9.39.4",
