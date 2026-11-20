@@ -1,7 +1,7 @@
 {
 	"id": "defuddle-clipper",
 	"name": "Defuddle Web Clipper",
-	"version": "0.19.7",
+	"version": "0.19.12",
 	"minAppVersion": "1.4.0",
 	"description": "Parse a URL with Defuddle and save the extracted article as a note.",
 	"author": "Laurin Sorgend",
